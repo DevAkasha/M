@@ -1,0 +1,11 @@
+C:\Users\minyoung\M\SourceGenerator\Akasha.SourceGenerator\bin\Release\netstandard2.0\Akasha.SourceGenerator.deps.json
+C:\Users\minyoung\M\SourceGenerator\Akasha.SourceGenerator\bin\Release\netstandard2.0\Akasha.SourceGenerator.dll
+C:\Users\minyoung\M\SourceGenerator\Akasha.SourceGenerator\bin\Release\netstandard2.0\Akasha.SourceGenerator.pdb
+C:\Users\minyoung\M\SourceGenerator\Akasha.SourceGenerator\obj\Release\netstandard2.0\Akasha.SourceGenerator.csproj.AssemblyReference.cache
+C:\Users\minyoung\M\SourceGenerator\Akasha.SourceGenerator\obj\Release\netstandard2.0\Akasha.SourceGenerator.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\minyoung\M\SourceGenerator\Akasha.SourceGenerator\obj\Release\netstandard2.0\Akasha.SourceGenerator.AssemblyInfoInputs.cache
+C:\Users\minyoung\M\SourceGenerator\Akasha.SourceGenerator\obj\Release\netstandard2.0\Akasha.SourceGenerator.AssemblyInfo.cs
+C:\Users\minyoung\M\SourceGenerator\Akasha.SourceGenerator\obj\Release\netstandard2.0\Akasha.SourceGenerator.csproj.CoreCompileInputs.cache
+C:\Users\minyoung\M\SourceGenerator\Akasha.SourceGenerator\obj\Release\netstandard2.0\Akasha.SourceGenerator.sourcelink.json
+C:\Users\minyoung\M\SourceGenerator\Akasha.SourceGenerator\obj\Release\netstandard2.0\Akasha.SourceGenerator.dll
+C:\Users\minyoung\M\SourceGenerator\Akasha.SourceGenerator\obj\Release\netstandard2.0\Akasha.SourceGenerator.pdb

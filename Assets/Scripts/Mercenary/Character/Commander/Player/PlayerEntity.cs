@@ -1,7 +1,8 @@
 ﻿using Akasha;
 using UnityEngine;
 
-public sealed class PlayerEntity : BaseEntity<PlayerModel>
+[GenerateWrappers]
+public sealed partial class PlayerEntity : BaseEntity<PlayerModel>
 {
     protected override PlayerModel SetupModel()
     {
