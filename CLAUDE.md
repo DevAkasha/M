@@ -333,7 +333,22 @@ Inspector에서 FSM 상태 실시간 확인 가능
 
 ## 중요한 참고 문서
 
-프레임워크 상세 정보는 **Akasha_Framework_Documentation.md** 참조
+- **프레임워크 문서**: `Akasha_Framework_Documentation.md` - Akasha Framework 상세 정보
+- **Mercenary 기획서**: `Assets/Scripts/Mercenary/용병단 육성 게임 통합 기획서.md` - 게임 기획 전체 내용
+- **상세 기획서**: `Assets/Doc/` - 각 시스템별 상세 기획 (던전, 본거지, 전장)
+
+### Mercenary 폴더 작업 시 필수 사항
+
+**`Assets/Scripts/Mercenary/` 폴더에서 작업할 때는 반드시 `용병단 육성 게임 통합 기획서.md`를 참고하세요.**
+
+이 기획서에는 다음이 포함되어 있습니다:
+- 던전 시스템 (전투, 파티 편성, 스킬, 웨이브)
+- 본거지 시스템 (시설, 생산, 자원 관리)
+- 전장 시스템 (RTS, 전술 영역, 병사 관리)
+- 스탯 시스템 (7개 기본 스탯 + 정밀/통찰 버프 스탯)
+- 성장 시스템 (레벨, 경험치, 환생, 장비)
+
+자세한 내용은 `Assets/Scripts/Mercenary/README.md`를 참고하세요.
 
 ## 주의 사항
 
