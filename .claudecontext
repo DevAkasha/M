@@ -1,0 +1,11 @@
+# Akasha Framework Reference Documentation
+
+## Core Documentation
+.claude/context/Akasha_README.md
+.claude/context/Akasha_API.md
+
+These files contain the complete Akasha framework documentation including:
+- Framework overview and philosophy
+- API reference for all core classes
+- Usage examples and best practices
+- Architecture patterns and guidelines
