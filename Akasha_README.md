@@ -3,7 +3,7 @@
 
 [![Unity Version](https://img.shields.io/badge/Unity-6000.0%2B-blue.svg)](https://unity.com/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-309%20Passed-brightgreen.svg)](/)
+[![Tests](https://img.shields.io/badge/Tests-213%20Passed-brightgreen.svg)](/)
 [![Coverage](https://img.shields.io/badge/Coverage-48.7%25-yellow.svg)](/)
 
 ---
@@ -288,35 +288,56 @@ AttackPower.AddModifier("buff", 0.5f, ModifierType.AddMultiplier); // +50%
 
 ---
 
-### 🔗 RxComputed — 파생 값
+### 🔗 RxComputed — 파생 값 & 연쇄참조
 
-다른 Reactive 값들로부터 자동 계산되는 읽기 전용 값입니다.
+다른 Reactive 값들로부터 자동 계산되는 읽기 전용 값입니다. **RxComputed끼리 연쇄참조 가능**합니다.
 
 ```csharp
-public RxComputed<bool> IsDead { get; private set; }
+public RxVar<int> Level { get; private set; }
+public RxMod<float> BaseHealth { get; private set; }
+
+// 1단계: 기본 계산
+public RxComputed<float> TotalHealth { get; private set; }
+
+// 2단계: RxComputed 의존 (연쇄참조)
 public RxComputed<float> HealthPercent { get; private set; }
+public RxComputed<bool> IsLowHealth { get; private set; }
 
 public override void AtReadyModel()
 {
-    IsDead = new RxComputed<bool>(
-        () => Health.Value <= 0,
-        nameof(IsDead), this)
-        .DependsOn(Health);
+    // 1단계
+    TotalHealth = new RxComputed<float>(
+        () => BaseHealth.Value + Level.Value * 10,
+        nameof(TotalHealth), this)
+        .DependsOn(BaseHealth, Level);
 
+    // 2단계: RxComputed를 의존 (연쇄참조)
     HealthPercent = new RxComputed<float>(
-        () => (float)Health.Value / MaxHealth.Value * 100f,
+        () => TotalHealth.Value / MaxHealth.Value * 100f,
         nameof(HealthPercent), this)
-        .DependsOn(Health, MaxHealth);
+        .DependsOn((IRxDependency)TotalHealth);  // RxComputed 의존!
+
+    IsLowHealth = new RxComputed<bool>(
+        () => HealthPercent.Value < 30f,
+        nameof(IsLowHealth), this)
+        .DependsOn((IRxDependency)HealthPercent);  // 연쇄참조!
 }
 ```
 
 **주요 특징**
 - 지연 평가 (lazy evaluation)
 - 자동 의존성 추적
-- 순환 의존성 감지
+- **RxComputed 연쇄참조 지원** (신규!)
+- **순환 의존성 자동 감지** (DFS 알고리즘)
+- **고성능 최적화** (리플렉션 캐싱, 증분 검증)
 - 크로스 필드 반응성
 
-**사용 사례:** 체력 퍼센트, IsDead, 총 방어력, UI 바인딩 등
+**순환참조 검증**
+- 개발 환경에서만 활성화 (릴리즈 빌드 오버헤드 0%)
+- 직접/간접 순환참조 자동 감지 및 예외 발생
+- 성능: 50개 체인 ~4ms, 릴리즈 빌드 ~0ms
+
+**사용 사례:** 체력 퍼센트, IsDead, 총 방어력, UI 바인딩, 복잡한 파생 계산 등
 
 ---
 

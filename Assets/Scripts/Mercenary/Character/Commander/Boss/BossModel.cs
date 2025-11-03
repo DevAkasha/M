@@ -37,6 +37,10 @@ public class BossModel : CharModel
 
     // 광폭화 (페이즈 3 전용)
     public RxComputed<bool> IsEnraged { get; private set; }
+    public RxComputed<float> EnragedDamageMultiplier { get; private set; }
+
+    // 광폭화 효과가 적용된 실제 공격력 (연쇄참조)
+    public RxComputed<float> EffectiveMeleeAttack { get; private set; }
 
     // 패턴 쿨타임 관리
     public RxVar<float> PatternCooldown { get; private set; }
@@ -61,11 +65,10 @@ public class BossModel : CharModel
             return maxHp > 0 ? (float)CurrentHP.Value / maxHp * 100f : 0f;
         }, nameof(HPPercentage), this).DependsOn(CurrentHP, Difficulty);
 
-        // 현재 페이즈 계산 (CurrentHP에 직접 의존)
+        // 현재 페이즈 계산 (HPPercentage 연쇄참조)
         CurrentPhase = new RxComputed<BossPhase>(() =>
         {
-            int maxHp = GetBaseMaxHP();
-            float hpPercent = maxHp > 0 ? (float)CurrentHP.Value / maxHp * 100f : 0f;
+            float hpPercent = HPPercentage.Value;
 
             if (hpPercent > 66f)
                 return BossPhase.Phase1;
@@ -73,15 +76,25 @@ public class BossModel : CharModel
                 return BossPhase.Phase2;
             else
                 return BossPhase.Phase3;
-        }, nameof(CurrentPhase), this).DependsOn(CurrentHP, Difficulty);
+        }, nameof(CurrentPhase), this).DependsOn(HPPercentage);
 
-        // 광폭화 (페이즈 3) - CurrentHP에 직접 의존
+        // 광폭화 (페이즈 3) - HPPercentage 연쇄참조
         IsEnraged = new RxComputed<bool>(() =>
         {
-            int maxHp = GetBaseMaxHP();
-            float hpPercent = maxHp > 0 ? (float)CurrentHP.Value / maxHp * 100f : 0f;
-            return hpPercent <= 33f;
-        }, nameof(IsEnraged), this).DependsOn(CurrentHP, Difficulty);
+            return HPPercentage.Value <= 33f;
+        }, nameof(IsEnraged), this).DependsOn(HPPercentage);
+
+        // 광폭화 데미지 배수 (IsEnraged 연쇄참조)
+        EnragedDamageMultiplier = new RxComputed<float>(() =>
+        {
+            return IsEnraged.Value ? 1.5f : 1.0f;
+        }, nameof(EnragedDamageMultiplier), this).DependsOn(IsEnraged);
+
+        // 광폭화 효과가 적용된 실제 공격력 (MeleeAttack, EnragedDamageMultiplier 연쇄참조)
+        EffectiveMeleeAttack = new RxComputed<float>(() =>
+        {
+            return MeleeAttack.Value * EnragedDamageMultiplier.Value;
+        }, nameof(EffectiveMeleeAttack), this).DependsOn(MeleeAttack, EnragedDamageMultiplier);
 
         // 페이즈 변경 시 패턴 수 증가
         CurrentPhase.AddListener(OnPhaseChanged);
@@ -167,8 +180,9 @@ public class BossModel : CharModel
     /// <summary>
     /// 광폭화 공격력 배수
     /// </summary>
+    [System.Obsolete("Use EnragedDamageMultiplier.Value instead")]
     public float GetEnragedDamageMultiplier()
     {
-        return IsEnraged.Value ? 1.5f : 1.0f;
+        return EnragedDamageMultiplier.Value;
     }
 }

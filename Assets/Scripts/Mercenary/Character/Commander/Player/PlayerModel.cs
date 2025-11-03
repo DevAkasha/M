@@ -125,22 +125,6 @@ public sealed class PlayerModel : CharModel
         AvailableBuffStatPoints.Set(AvailableBuffStatPoints.Value - points);
         return true;
     }
-
-    /// <summary>
-    /// 던전에서 플레이어 기여도 (정밀 계수 적용)
-    /// </summary>
-    public float GetDungeonContribution(float baseStat)
-    {
-        return baseStat * (1f + PrecisionCoefficient.Value / 100f);
-    }
-
-    /// <summary>
-    /// 전장에서 병사 버프 (통찰 계수 적용)
-    /// </summary>
-    public float GetBattlefieldBuff()
-    {
-        return InsightCoefficient.Value;
-    }
 }
 
 /// <summary>

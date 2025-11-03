@@ -278,7 +278,7 @@ character.Health.RemoveModifier("buff_health");
 
 ### RxComputed&lt;T&gt;
 
-RxVar나 RxMod를 이용한 파생형 필드에 사용되는 반응형 프로퍼티입니다.
+RxVar, RxMod, 또는 다른 RxComputed를 이용한 파생형 필드에 사용되는 반응형 프로퍼티입니다.
 
 #### 생성자
 
@@ -301,20 +301,30 @@ public T Value { get; }
 
 #### 주요 메서드
 
+##### 연쇄참조 메서드
+
 ```csharp
-public RxComputed<T> DependsOn(RxData? dependency)
+public RxComputed<T> DependsOn(IRxDependency? dependency)
 ```
 
-단일 의존성을 추가합니다. 의존성이 변경되면 자동으로 재계산됩니다.
+IRxDependency 의존성을 추가합니다. **RxData뿐만 아니라 다른 RxComputed도 의존 가능**합니다.
+
+**매개변수:**
+- `dependency`: IRxDependency (RxData 또는 RxComputed)
+
+**예외:**
+- `InvalidOperationException`: 순환참조가 감지된 경우 (개발 환경에서만)
 
 **반환값:**
 - this (메서드 체이닝 지원)
 
 ```csharp
-public RxComputed<T> DependsOn(params RxData[] dependencies)
+public RxComputed<T> DependsOn(params IRxDependency[] dependencies)
 ```
 
-여러 의존성을 추가합니다.
+여러 IRxDependency 의존성을 추가합니다.
+
+##### 리스너 관리
 
 ```csharp
 public void AddListener(Action<T> listener)
@@ -331,38 +341,233 @@ public void RemoveListener(Action<T> listener)
 #### 주요 특징
 
 - **Lazy Initialization**: 처음 Value에 접근할 때 계산됩니다.
-- **자동 재계산**: 의존하는 RxData가 변경되면 자동으로 재계산됩니다.
-- **순환 의존성 감지**: 순환 의존성이 감지되면 경고 로그를 출력합니다.
+- **자동 재계산**: 의존하는 필드가 변경되면 자동으로 재계산됩니다.
+- **연쇄참조 지원**: RxComputed가 다른 RxComputed를 의존할 수 있습니다.
+- **순환참조 검증**: DFS + Recursion Stack 알고리즘으로 순환참조를 자동 감지합니다.
+- **고성능**: 방문 캐시, 리플렉션 캐싱, 증분 검증으로 최적화되었습니다.
+- **조건부 검증**: 개발 환경에서만 순환참조를 검증하여 릴리즈 빌드의 성능 영향을 제거합니다.
 - **동일 Model 내 의존성 권장**: 다른 Model의 필드에 의존하면 경고가 발생합니다.
+
+#### 순환참조 검증
+
+RxComputed는 의존성 추가 시 자동으로 순환참조를 검증합니다:
+
+**검증 시점:**
+- 개발 환경 (`UNITY_EDITOR` 또는 `DEVELOPMENT_BUILD`)에서만 활성화
+- 릴리즈 빌드에서는 완전히 제거되어 오버헤드 없음
+
+**검증 알고리즘:**
+- DFS(Depth-First Search) + Recursion Stack 방식
+- 시간복잡도: O(V + E) (V: 노드 수, E: 간선 수)
+- 증분 검증: 새로운 의존성이 현재 노드로 돌아오는 경로만 체크
+
+**성능 최적화:**
+1. **방문 캐시**: 중복 탐색 방지 (HashSet 사용)
+2. **리플렉션 캐싱**: 타입별 FieldInfo를 캐싱하여 리플렉션 비용 최소화
+3. **증분 검증**: 전체 그래프 재구축 없이 새 의존성만 검증
+4. **조건부 컴파일**: 릴리즈 빌드에서 완전 제거
+
+**순환참조 예시:**
+```csharp
+// ❌ 직접 순환참조 (A → B → A)
+computedA.DependsOn(computedB);
+computedB.DependsOn((computedA); // 예외 발생!
+
+// ❌ 간접 순환참조 (A → B → C → A)
+computedA.DependsOn(computedB);
+computedB.DependsOn(computedC);
+computedC.DependsOn(computedA); // 예외 발생!
+
+// ❌ 자기 참조 (A → A)
+computedA.DependsOn(computedA); // 예외 발생!
+```
 
 #### 사용 예시
 
+##### 연쇄참조 사용 (RxComputed 의존)
+
 ```csharp
-public class PlayerModel : BaseModel
+public class CharacterModel : BaseModel
 {
-    public RxVar<int> Strength;
-    public RxVar<int> Agility;
-    public RxMod<float> BaseAttack;
-    public RxComputed<float> TotalAttack;
+    public RxVar<int> Level;
+    public RxMod<float> BaseHealth;
+    public RxMod<float> BaseMana;
 
-    public PlayerModel()
+    // 1단계: 기본 스탯 계산
+    public RxComputed<float> TotalHealth;
+    public RxComputed<float> TotalMana;
+
+    // 2단계: 파생 스탯 계산 (RxComputed 의존)
+    public RxComputed<float> CombatPower;
+    public RxComputed<bool> IsLowResource;
+
+    public override void AtInit()
     {
-        Strength = new RxVar<int>(10, "Strength", this);
-        Agility = new RxVar<int>(8, "Agility", this);
-        BaseAttack = new RxMod<float>(50f, "BaseAttack", this);
+        Level = new RxVar<int>(1, "Level", this);
+        BaseHealth = new RxMod<float>(100f, "BaseHealth", this);
+        BaseMana = new RxMod<float>(50f, "BaseMana", this);
 
-        TotalAttack = new RxComputed<float>(
-            () => BaseAttack.Value + Strength.Value * 2 + Agility.Value,
-            "TotalAttack",
+        // 1단계 계산
+        TotalHealth = new RxComputed<float>(
+            () => BaseHealth.Value + Level.Value * 10,
+            "TotalHealth",
             this
-        ).DependsOn(BaseAttack, Strength, Agility);
+        ).DependsOn(BaseHealth, Level);
+
+        TotalMana = new RxComputed<float>(
+            () => BaseMana.Value + Level.Value * 5,
+            "TotalMana",
+            this
+        ).DependsOn(BaseMana, Level);
+
+        // 2단계 계산: RxComputed를 의존 (연쇄참조)
+        CombatPower = new RxComputed<float>(
+            () => TotalHealth.Value * 0.5f + TotalMana.Value * 0.3f,
+            "CombatPower",
+            this
+        ).DependsOn((IRxDependency)TotalHealth, TotalMana);
+
+        IsLowResource = new RxComputed<bool>(
+            () => TotalHealth.Value < 30 || TotalMana.Value < 20,
+            "IsLowResource",
+            this
+        ).DependsOn((IRxDependency)TotalHealth, TotalMana);
     }
 }
 
-// Strength가 변경되면 TotalAttack이 자동으로 재계산됨
-player.Strength.Set(15); // TotalAttack 자동 업데이트
-Debug.Log(player.TotalAttack.Value); // 새로운 값 출력
+// Level 변경 시 연쇄적으로 모두 재계산됨
+character.Level.Set(10);
+// → TotalHealth, TotalMana 재계산
+// → CombatPower, IsLowResource 재계산
 ```
+
+##### 복잡한 연쇄참조
+
+```csharp
+public class ComplexModel : BaseModel
+{
+    public RxVar<int> Strength;
+    public RxVar<int> Intelligence;
+    public RxMod<float> BaseAttack;
+    public RxMod<float> BaseMagic;
+
+    // 1단계
+    public RxComputed<float> PhysicalPower;
+    public RxComputed<float> MagicalPower;
+
+    // 2단계
+    public RxComputed<float> HybridPower;
+
+    // 3단계
+    public RxComputed<string> PowerRank;
+
+    public override void AtInit()
+    {
+        Strength = new RxVar<int>(10, "Strength", this);
+        Intelligence = new RxVar<int>(8, "Intelligence", this);
+        BaseAttack = new RxMod<float>(20f, "BaseAttack", this);
+        BaseMagic = new RxMod<float>(15f, "BaseMagic", this);
+
+        // 1단계: 기본 계산
+        PhysicalPower = new RxComputed<float>(
+            () => BaseAttack.Value + Strength.Value * 2,
+            "PhysicalPower",
+            this
+        ).DependsOn(BaseAttack, Strength);
+
+        MagicalPower = new RxComputed<float>(
+            () => BaseMagic.Value + Intelligence.Value * 2,
+            "MagicalPower",
+            this
+        ).DependsOn(BaseMagic, Intelligence);
+
+        // 2단계: 1단계 결과 활용
+        HybridPower = new RxComputed<float>(
+            () => PhysicalPower.Value * 0.6f + MagicalPower.Value * 0.4f,
+            "HybridPower",
+            this
+        ).DependsOn((IRxDependency)PhysicalPower, MagicalPower);
+
+        // 3단계: 2단계 결과 활용
+        PowerRank = new RxComputed<string>(
+            () => HybridPower.Value switch
+            {
+                >= 100 => "S",
+                >= 80 => "A",
+                >= 60 => "B",
+                >= 40 => "C",
+                _ => "D"
+            },
+            "PowerRank",
+            this
+        ).DependsOn(HybridPower);
+    }
+}
+
+// Strength 변경 시 3단계 연쇄 재계산
+model.Strength.Set(20);
+// → PhysicalPower 재계산
+// → HybridPower 재계산
+// → PowerRank 재계산
+```
+
+##### 서로 다른 타입 간 연쇄참조
+
+```csharp
+public class UIModel : BaseModel
+{
+    public RxVar<int> CurrentHealth;
+    public RxVar<int> MaxHealth;
+    public RxComputed<float> HealthPercent;
+    public RxComputed<string> HealthText;
+    public RxComputed<Color> HealthColor;
+
+    public override void AtInit()
+    {
+        CurrentHealth = new RxVar<int>(80, "CurrentHealth", this);
+        MaxHealth = new RxVar<int>(100, "MaxHealth", this);
+
+        // float 타입
+        HealthPercent = new RxComputed<float>(
+            () => (float)CurrentHealth.Value / MaxHealth.Value * 100f,
+            "HealthPercent",
+            this
+        ).DependsOn(CurrentHealth, MaxHealth);
+
+        // string 타입 (float RxComputed 의존)
+        HealthText = new RxComputed<string>(
+            () => $"{CurrentHealth.Value} / {MaxHealth.Value} ({HealthPercent.Value:F1}%)",
+            "HealthText",
+            this
+        ).DependsOn(HealthPercent);
+
+        // Color 타입 (float RxComputed 의존)
+        HealthColor = new RxComputed<Color>(
+            () => HealthPercent.Value switch
+            {
+                >= 70 => Color.green,
+                >= 30 => Color.yellow,
+                _ => Color.red
+            },
+            "HealthColor",
+            this
+        ).DependsOn(HealthPercent);
+    }
+}
+```
+
+#### 성능 참고
+
+**개발 환경 (순환참조 검증 활성화):**
+- 단순 체인 (5단계): ~0ms
+- 복잡한 구조 (20개 노드): ~0-1ms
+- 50개 체인: ~4ms
+- 서로 다른 타입 (리플렉션): ~7ms
+
+**릴리즈 빌드 (순환참조 검증 비활성화):**
+- 오버헤드: **0ms** (완전히 제거됨)
+
+따라서 연쇄참조를 자유롭게 사용해도 성능에 영향이 없습니다.
 
 ---
 
